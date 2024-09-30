@@ -312,6 +312,16 @@ func GetUserCount(owner, field, value string, groupName string) (int64, error) {
 	return session.Count(&User{})
 }
 
+func GetUserCountMultiValues(owner string, fields, values []string, groupName string) (int64, error) {
+	session := GetSessionMultiValues(owner, -1, -1, fields, values, "", "")
+
+	if groupName != "" {
+		return GetGroupUserCountMultiValues(util.GetId(owner, groupName), fields, values)
+	}
+
+	return session.Count(&User{})
+}
+
 func GetOnlineUserCount(owner string, isOnline int) (int64, error) {
 	return ormer.Engine.Where("is_online = ?", isOnline).Count(&User{Owner: owner})
 }
@@ -365,13 +375,17 @@ func GetSortedUsers(owner string, sorter string, limit int) ([]*User, error) {
 }
 
 func GetPaginationUsers(owner string, offset, limit int, field, value, sortField, sortOrder string, groupName string) ([]*User, error) {
+	return GetPaginationUsersMultiValues(owner, offset, limit, []string{field}, []string{value}, sortField, sortOrder, groupName)
+}
+
+func GetPaginationUsersMultiValues(owner string, offset, limit int, fields, values []string, sortField, sortOrder string, groupName string) ([]*User, error) {
 	users := []*User{}
 
 	if groupName != "" {
-		return GetPaginationGroupUsers(util.GetId(owner, groupName), offset, limit, field, value, sortField, sortOrder)
+		return GetPaginationGroupUsersMultiValues(util.GetId(owner, groupName), offset, limit, fields, values, sortField, sortOrder)
 	}
 
-	session := GetSessionForUser(owner, offset, limit, field, value, sortField, sortOrder)
+	session := GetSessionForUserMultiValues(owner, offset, limit, fields, values, sortField, sortOrder)
 	err := session.Find(&users)
 	if err != nil {
 		return nil, err

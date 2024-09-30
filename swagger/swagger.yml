@@ -2206,6 +2206,59 @@ paths:
             type: array
             items:
               $ref: '#/definitions/object.User'
+  /api/get-filter-users:
+    get:
+      tags:
+      - User API
+      description: |-
+        get global users
+        <br>
+      operationId: ApiController.GetFilterUsers
+      parameters:
+      - in: query
+        name: owner
+        description: The owner of tokens
+        required: true
+        type: string
+      - in: query
+        name: pageSize
+        description: The size of each page
+        required: true
+        type: string
+      - in: query
+        name: p
+        description: The number of the page
+        required: true
+        type: string
+      - in: query
+        name: field
+        description: Field names
+        collectionFormat: multi
+        type: array
+        items:
+          type: string
+      - in: query
+        name: value
+        description: Field values
+        collectionFormat: multi
+        type: array
+        items:
+          type: string
+      - in: query
+        name: sortField
+        description: Sort field
+        type: string
+      - in: query
+        name: sortOrder
+        description: Sort order
+        type: string
+      responses:
+        "200":
+          description: The Response object
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/object.User'
   /api/get-version-info:
     get:
       tags:

@@ -23,6 +23,10 @@ import (
 )
 
 func GetSession(owner string, offset, limit int, field, value, sortField, sortOrder string) *xorm.Session {
+	return GetSessionMultiValues(owner, offset, limit, []string{field}, []string{value}, sortField, sortOrder)
+}
+
+func GetSessionMultiValues(owner string, offset, limit int, fields, values []string, sortField, sortOrder string) *xorm.Session {
 	session := ormer.Engine.Prepare()
 	if offset != -1 && limit != -1 {
 		session.Limit(limit, offset)
@@ -30,9 +34,12 @@ func GetSession(owner string, offset, limit int, field, value, sortField, sortOr
 	if owner != "" {
 		session = session.And("owner=?", owner)
 	}
-	if field != "" && value != "" {
-		if util.FilterField(field) {
-			session = session.And(fmt.Sprintf("%s like ?", util.SnakeString(field)), fmt.Sprintf("%%%s%%", value))
+	for i, field := range fields {
+		value := values[i]
+		if field != "" && value != "" {
+			if util.FilterField(field) {
+				session = session.And(fmt.Sprintf("%s like ?", util.SnakeString(field)), fmt.Sprintf("%%%s%%", value))
+			}
 		}
 	}
 	if sortField == "" || sortOrder == "" {
@@ -47,6 +54,10 @@ func GetSession(owner string, offset, limit int, field, value, sortField, sortOr
 }
 
 func GetSessionForUser(owner string, offset, limit int, field, value, sortField, sortOrder string) *xorm.Session {
+	return GetSessionForUserMultiValues(owner, offset, limit, []string{field}, []string{value}, sortField, sortField)
+}
+
+func GetSessionForUserMultiValues(owner string, offset, limit int, fields, values []string, sortField, sortOrder string) *xorm.Session {
 	session := ormer.Engine.Prepare()
 	if offset != -1 && limit != -1 {
 		session.Limit(limit, offset)
@@ -58,14 +69,19 @@ func GetSessionForUser(owner string, offset, limit int, field, value, sortField,
 			session = session.And("a.owner=?", owner)
 		}
 	}
-	if field != "" && value != "" {
-		if util.FilterField(field) {
-			if offset != -1 {
-				field = fmt.Sprintf("a.%s", field)
+
+	for i, field := range fields {
+		value := values[i]
+		if field != "" && value != "" {
+			if util.FilterField(field) {
+				if offset != -1 {
+					field = fmt.Sprintf("a.%s", field)
+				}
+				session = session.And(fmt.Sprintf("%s like ?", util.SnakeString(field)), fmt.Sprintf("%%%s%%", value))
 			}
-			session = session.And(fmt.Sprintf("%s like ?", util.SnakeString(field)), fmt.Sprintf("%%%s%%", value))
 		}
 	}
+
 	if sortField == "" || sortOrder == "" {
 		sortField = "created_time"
 	}
