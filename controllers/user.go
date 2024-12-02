@@ -132,6 +132,72 @@ func (c *ApiController) GetUsers() {
 	}
 }
 
+// GetFilterUsers
+// @Title GetFilterUsers
+// @Tag User API
+// @Description get global users
+// @Param   owner      query    string    true        "The owner of tokens"
+// @Param   pageSize   query    string    true        "The size of each page"
+// @Param   p          query    string    true        "The number of the page"
+// @Param   field      query    []string  false       "Field name"
+// @Param   value      query    []string  false       "Field value"
+// @Param   sortField  query    string    false       "Sort field"
+// @Param   sortOrder  query    string    false       "Sort order"
+// @Success 200 {array} object.User The Response object
+// @router /get-filter-users [get]
+func (c *ApiController) GetFilterUsers() {
+	owner := c.Input().Get("owner")
+	groupName := c.Input().Get("groupName")
+	limit := c.Input().Get("pageSize")
+	page := c.Input().Get("p")
+	field := c.GetStrings("field")
+	value := c.GetStrings("value")
+	sortField := c.Input().Get("sortField")
+	sortOrder := c.Input().Get("sortOrder")
+
+	if limit == "" || page == "" {
+		if groupName != "" {
+			users, err := object.GetMaskedUsers(object.GetGroupUsers(util.GetId(owner, groupName)))
+			if err != nil {
+				c.ResponseError(err.Error())
+				return
+			}
+			c.ResponseOk(users)
+			return
+		}
+
+		users, err := object.GetMaskedUsers(object.GetUsers(owner))
+		if err != nil {
+			c.ResponseError(err.Error())
+			return
+		}
+
+		c.ResponseOk(users)
+	} else {
+		limit := util.ParseInt(limit)
+		count, err := object.GetUserCountMultiValues(owner, field, value, groupName)
+		if err != nil {
+			c.ResponseError(err.Error())
+			return
+		}
+
+		paginator := pagination.SetPaginator(c.Ctx, limit, count)
+		users, err := object.GetPaginationUsersMultiValues(owner, paginator.Offset(), limit, field, value, sortField, sortOrder, groupName)
+		if err != nil {
+			c.ResponseError(err.Error())
+			return
+		}
+
+		users, err = object.GetMaskedUsers(users)
+		if err != nil {
+			c.ResponseError(err.Error())
+			return
+		}
+
+		c.ResponseOk(users, paginator.Nums())
+	}
+}
+
 // GetUser
 // @Title GetUser
 // @Tag User API

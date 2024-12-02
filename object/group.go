@@ -221,24 +221,44 @@ func ConvertToTreeData(groups []*Group, parentId string) []*Group {
 }
 
 func GetGroupUserCount(groupId string, field, value string) (int64, error) {
+	return GetGroupUserCountMultiValues(groupId, []string{field}, []string{value})
+}
+
+func GetGroupUserCountMultiValues(groupId string, fields, values []string) (int64, error) {
 	owner, _ := util.GetOwnerAndNameFromId(groupId)
 	names, err := userEnforcer.GetUserNamesByGroupName(groupId)
 	if err != nil {
 		return 0, err
 	}
 
-	if field == "" && value == "" {
+	if len(fields) == 0 || len(values) == 0 {
 		return int64(len(names)), nil
-	} else {
-		tableNamePrefix := conf.GetConfigString("tableNamePrefix")
-		return ormer.Engine.Table(tableNamePrefix+"user").
-			Where("owner = ?", owner).In("name", names).
-			And(fmt.Sprintf("user.%s like ?", util.CamelToSnakeCase(field)), "%"+value+"%").
-			Count()
 	}
+
+	for i, field := range fields {
+		value := values[i]
+		if field == "" && value == "" {
+			return int64(len(names)), nil
+		}
+	}
+
+	tableNamePrefix := conf.GetConfigString("tableNamePrefix")
+	session := ormer.Engine.Table(tableNamePrefix+"user").
+		Where("owner = ?", owner).In("name", names)
+	for i, field := range fields {
+		value := values[i]
+		if util.FilterField(field) {
+			session = session.And(fmt.Sprintf("user.%s like ?", util.CamelToSnakeCase(field)), "%"+value+"%")
+		}
+	}
+	return session.Count()
 }
 
 func GetPaginationGroupUsers(groupId string, offset, limit int, field, value, sortField, sortOrder string) ([]*User, error) {
+	return GetPaginationGroupUsersMultiValues(groupId, offset, limit, []string{field}, []string{value}, sortField, sortOrder)
+}
+
+func GetPaginationGroupUsersMultiValues(groupId string, offset, limit int, fields, values []string, sortField, sortOrder string) ([]*User, error) {
 	users := []*User{}
 	owner, _ := util.GetOwnerAndNameFromId(groupId)
 	names, err := userEnforcer.GetUserNamesByGroupName(groupId)
@@ -255,8 +275,11 @@ func GetPaginationGroupUsers(groupId string, offset, limit int, field, value, so
 		session.Limit(limit, offset)
 	}
 
-	if field != "" && value != "" {
-		session = session.And(fmt.Sprintf("%s.%s like ?", prefixedUserTable, util.CamelToSnakeCase(field)), "%"+value+"%")
+	for i, field := range fields {
+		value := values[i]
+		if field != "" && value != "" {
+			session = session.And(fmt.Sprintf("%s.%s like ?", prefixedUserTable, util.CamelToSnakeCase(field)), "%"+value+"%")
+		}
 	}
 
 	if sortField == "" || sortOrder == "" {
